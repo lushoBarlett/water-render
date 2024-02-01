@@ -1,0 +1,7 @@
+*
+!*.hpp
+!*.cpp
+!*.cpp
+!*.frag
+!*.vert
+!Makefile
