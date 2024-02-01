@@ -1,7 +1,4 @@
-*
-!*.hpp
-!*.cpp
-!*.cpp
-!*.frag
-!*.vert
-!Makefile
+*log
+*png
+water
+sanitize
