@@ -13,6 +13,10 @@
 #include "vendor/glm/glm.hpp"
 #include "vendor/glm/gtc/matrix_transform.hpp"
 
+#include "vendor/imgui/imgui.h"
+#include "vendor/imgui/imgui_impl_glfw.h"
+#include "vendor/imgui/imgui_impl_opengl3.h"
+
 static void fps(GLFWwindow* window) {
 	static double previous_seconds = glfwGetTime();
 	static int frame_count;
@@ -35,6 +39,8 @@ static void fps(GLFWwindow* window) {
 }
 
 int main() {
+	const char* GLSL_VERSION = "#version 400";
+
 	const int VERTEX_SIZE = 5;
 	const int SIZE = 2;
 
@@ -90,6 +96,21 @@ int main() {
 	renderer->start_window();
 	GLFWwindow* window = renderer->get_window();
 
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(GLSL_VERSION);
+
 	renderer->blend();
 
 	Mesh* plane = new Mesh();
@@ -112,23 +133,39 @@ int main() {
 	Location1I utex = shader->uniform1i("tex");
 	utex.set(texture_slot);
 
+	glm::vec3 translation(0.0f, 0.0f, 0.0f);
+
 	glm::mat4 projection = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
 	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
-	glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-
-	glm::mat4 mvp = projection * view * model;
 
 	LocationMat4F umvp = shader->uniformMat4f("mvp");
-	umvp.set(&mvp);
 
 	while (!renderer->window_should_close()) {
 
 		fps(window);
 
 		renderer->clear();
+
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		{
+			ImGui::SliderFloat3("Translation", &translation.x, -1.0f, 1.0f);
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+		}
+
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
+		glm::mat4 mvp = projection * view * model;
+		umvp.set(&mvp);
+
 		renderer->render(plane, shader);
 
 		utime.set(utime.get() + 1.0f / 60.0f);
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		renderer->swap_buffers();
 		renderer->poll_events();
@@ -144,4 +181,8 @@ int main() {
 	delete shader;
 	delete texture;
 	delete renderer;
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 }
