@@ -10,6 +10,7 @@
 #include <GLFW/glfw3.h>
 
 #include "log.hpp"
+#include "vendor/glm/glm.hpp"
 
 struct Shader {
 	const char* vertex_shader;
@@ -25,6 +26,7 @@ struct Shader {
 
 	struct Location1F uniform1f(const char* name);
 	struct Location1I uniform1i(const char* name);
+	struct LocationMat4F uniformMat4f(const char* name);
 
 private:
 	GLuint program;
@@ -32,12 +34,12 @@ private:
 	char* read_file(const char* filename);
 };
 
-#define LOCATION_CLASS(NAME, TYPE, GL_UNIFORM_CALL) \
+#define SCALAR_LOCATION_CLASS(NAME, TYPE, GL_UNIFORM_CALL) \
 struct Location##NAME { \
 	const char* name; \
 	\
 	Location##NAME(Shader* shader, const char* name) : shader(shader), name(name) { \
-		location = glGetUniformLocation(shader->id(), name); \
+		GL_CALL(location = glGetUniformLocation(shader->id(), name)); \
 	} \
 	\
 	TYPE get() { \
@@ -46,7 +48,7 @@ struct Location##NAME { \
 	\
 	void set(TYPE value) { \
 		current = value; \
-		GL_UNIFORM_CALL(shader->id(), location, value); \
+		GL_CALL(GL_UNIFORM_CALL(shader->id(), location, value)); \
 	} \
 	\
 	GLint id() { \
@@ -59,8 +61,36 @@ private: \
 	TYPE current; \
 }
 
-LOCATION_CLASS(1F, float, glProgramUniform1f);
-LOCATION_CLASS(1I, int, glProgramUniform1i);
+#define MATRIX_LOCATION_CLASS(NAME, TYPE, GL_UNIFORM_CALL) \
+struct LocationMat##NAME { \
+	const char* name; \
+	\
+	LocationMat##NAME(Shader* shader, const char* name) : shader(shader), name(name) { \
+		GL_CALL(location = glGetUniformLocation(shader->id(), name)); \
+	} \
+	\
+	const TYPE* get() { \
+		return current; \
+	} \
+	\
+	void set(const TYPE* value) { \
+		current = value; \
+		GL_CALL(GL_UNIFORM_CALL(shader->id(), location, 1, GL_FALSE, &(*value)[0][0])); \
+	} \
+	\
+	GLint id() { \
+		return location; \
+	} \
+	\
+private: \
+	Shader* shader; \
+	GLint location; \
+	const TYPE* current = nullptr; \
+}
+
+SCALAR_LOCATION_CLASS(1F, float, glProgramUniform1f);
+SCALAR_LOCATION_CLASS(1I, int, glProgramUniform1i);
+MATRIX_LOCATION_CLASS(4F, glm::mat4, glProgramUniformMatrix4fv);
 
 Shader::Shader(const char* vertex_shader_file, const char* fragment_shader_file) : vertex_shader(vertex_shader_file), fragment_shader(fragment_shader_file) {
 	compile_shaders();
@@ -93,6 +123,10 @@ Location1F Shader::uniform1f(const char* name) {
 
 Location1I Shader::uniform1i(const char* name) {
 	return Location1I(this, name);
+}
+
+LocationMat4F Shader::uniformMat4f(const char* name) {
+	return LocationMat4F(this, name);
 }
 
 void Shader::compile_shaders() {

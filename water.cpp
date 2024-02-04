@@ -10,6 +10,9 @@
 #include "texture.hpp"
 #include "renderer.hpp"
 
+#include "vendor/glm/glm.hpp"
+#include "vendor/glm/gtc/matrix_transform.hpp"
+
 static void fps(GLFWwindow* window) {
 	static double previous_seconds = glfwGetTime();
 	static int frame_count;
@@ -83,7 +86,7 @@ int main() {
 	for (int i = 0; i < sizeof(tesselated_plane) / sizeof(float); i++)
 		tesselated_plane[i] *= 0.2f;
 
-	Renderer* renderer = new Renderer(1920, 1080, "Water Render");
+	Renderer* renderer = new Renderer(640, 480, "water");
 	renderer->start_window();
 	GLFWwindow* window = renderer->get_window();
 
@@ -108,6 +111,15 @@ int main() {
 
 	Location1I utex = shader->uniform1i("tex");
 	utex.set(texture_slot);
+
+	glm::mat4 projection = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
+	glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+
+	glm::mat4 mvp = projection * view * model;
+
+	LocationMat4F umvp = shader->uniformMat4f("mvp");
+	umvp.set(&mvp);
 
 	while (!renderer->window_should_close()) {
 
