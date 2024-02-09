@@ -53,7 +53,7 @@ int main() {
 	int p = 0;
 	for (int x = 0; x < SIZE + 1; x++) {
 		for (int z = 0; z < SIZE + 1; z++) {
-			tesselated_plane[p++] = (x - SIZE / 2);
+			tesselated_plane[p++] = x;
 			tesselated_plane[p++] = Y;
 			tesselated_plane[p++] = z;
 		}
@@ -82,13 +82,13 @@ int main() {
 			 * .---.
 			 */
 			tesselated_plane_indices[i++] = zero;
-			tesselated_plane_indices[i++] = two;
 			tesselated_plane_indices[i++] = three;
+			tesselated_plane_indices[i++] = two;
 		}
 	}
 
 	for (int i = 0; i < sizeof(tesselated_plane) / sizeof(float); i++)
-		tesselated_plane[i] *= 0.2f;
+		tesselated_plane[i] *= 0.01f;
 
 	Renderer* renderer = new Renderer(640, 480, "water");
 	renderer->start_window();
@@ -122,12 +122,15 @@ int main() {
 	Location1F utime = shader->uniform1f("time");
 	utime.set(0.0f);
 
-	glm::vec3 translation(-1.0f, -0.1f, -1.0f);
+	glm::vec3 translation(-1.0f, 0.0f, 0.0f);
 
-	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 640.0f / 480.0f, 0.1f, 1000.0f);
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 640.0f / 480.0f, 1.0f, 1000.0f);
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -5.0f));
+	glm::mat4 rotateDownward = glm::rotate(glm::mat4(1.0f), glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
 	LocationMat4F umvp = shader->uniformMat4f("mvp");
+
+	renderer->culling(true, GL_BACK, GL_CCW);
 
 	while (!renderer->window_should_close()) {
 
@@ -136,7 +139,7 @@ int main() {
 		renderer->clear();
 
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
-		glm::mat4 mvp = projection * view * model;
+		glm::mat4 mvp = projection * rotateDownward * view * model;
 		umvp.set(&mvp);
 
 		renderer->render(plane, shader);
