@@ -38,35 +38,33 @@ static void fps(GLFWwindow* window) {
 	frame_count++;
 }
 
+const int SIZE = 1000;
+
+const int VERTEX_SIZE = 3;
+
+float tesselated_plane[VERTEX_SIZE * (SIZE + 1) * (SIZE + 1)];
+unsigned int tesselated_plane_indices[6 * SIZE * SIZE];
+
 int main() {
 	const char* GLSL_VERSION = "#version 400";
 
-	const int VERTEX_SIZE = 5;
-	const int SIZE = 2;
-
-	float tesselated_plane[VERTEX_SIZE * (SIZE + 1) * (SIZE + 1)];
-	unsigned int tesselated_plane_indices[6 * SIZE * SIZE];
-
-	const float Z = 1.0f;
+	const float Y = 0.0f;
 
 	int p = 0;
 	for (int x = 0; x < SIZE + 1; x++) {
-		for (int y = 0; y < SIZE + 1; y++) {
-			tesselated_plane[p++] = x;
-			tesselated_plane[p++] = y;
-			tesselated_plane[p++] = Z;
-
-			tesselated_plane[p++] = x / (float)SIZE;
-			tesselated_plane[p++] = y / (float)SIZE;
+		for (int z = 0; z < SIZE + 1; z++) {
+			tesselated_plane[p++] = (x - SIZE / 2);
+			tesselated_plane[p++] = Y;
+			tesselated_plane[p++] = z;
 		}
 	}
 
 	int i = 0;
 	for (int x = 0; x < SIZE; x++) {
-		for (int y = 0; y < SIZE; y++) {
-			auto zero = x * (SIZE + 1) + y;
+		for (int z = 0; z < SIZE; z++) {
+			auto zero = x * (SIZE + 1) + z;
 			auto one = zero + 1;
-			auto two = (x + 1) * (SIZE + 1) + y;
+			auto two = (x + 1) * (SIZE + 1) + z;
 			auto three = two + 1;
 
 			/**
@@ -116,27 +114,18 @@ int main() {
 	Mesh* plane = new Mesh();
 	plane->data(sizeof(tesselated_plane), tesselated_plane, GL_STATIC_DRAW);
 	plane->attributes<float>(3, false, VERTEX_SIZE * sizeof(float));
-	plane->attributes<float>(2, false, VERTEX_SIZE * sizeof(float));
 	plane->indices(sizeof(tesselated_plane_indices), tesselated_plane_indices, GL_STATIC_DRAW);
 	plane->mode(GL_TRIANGLES);
-
-	const int texture_slot = 0;
-
-	Texture* texture = new Texture("texture.png");
-	texture->bind(texture_slot);
 
 	Shader* shader = new Shader("plane.vert", "plane.frag");
 
 	Location1F utime = shader->uniform1f("time");
 	utime.set(0.0f);
 
-	Location1I utex = shader->uniform1i("tex");
-	utex.set(texture_slot);
+	glm::vec3 translation(-1.0f, -0.1f, -1.0f);
 
-	glm::vec3 translation(0.0f, 0.0f, 0.0f);
-
-	glm::mat4 projection = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
-	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
+	glm::mat4 projection = glm::perspective(glm::radians(45.0f), 640.0f / 480.0f, 0.1f, 1000.0f);
+	glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
 
 	LocationMat4F umvp = shader->uniformMat4f("mvp");
 
@@ -146,16 +135,6 @@ int main() {
 
 		renderer->clear();
 
-		// Start the Dear ImGui frame
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		{
-			ImGui::SliderFloat3("Translation", &translation.x, -1.0f, 1.0f);
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-		}
-
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), translation);
 		glm::mat4 mvp = projection * view * model;
 		umvp.set(&mvp);
@@ -163,9 +142,6 @@ int main() {
 		renderer->render(plane, shader);
 
 		utime.set(utime.get() + 1.0f / 60.0f);
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		renderer->swap_buffers();
 		renderer->poll_events();
@@ -179,7 +155,6 @@ int main() {
 
 	delete plane;
 	delete shader;
-	delete texture;
 	delete renderer;
 
 	ImGui_ImplOpenGL3_Shutdown();
